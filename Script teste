@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local aimAssistEnabled = false
 local espEnabled = false
 local menuVisible = false
+local noclipEnabled = false
 local aimDistance = 100 -- Distância padrão
 
 local dragging = false
@@ -84,6 +85,28 @@ function toggleESP()
     end
 end
 
+-- Função para alternar Noclip
+function toggleNoclip()
+    noclipEnabled = not noclipEnabled
+    if noclipEnabled then
+        RunService.Stepped:Connect(function()
+            if noclipEnabled and LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
 -- Conectar a função de atualização da mira no RenderStepped
 RunService.RenderStepped:Connect(updateAim)
 
@@ -132,7 +155,7 @@ function drawMenu()
 
     -- Adicionar botão para Aimbot
     local aimButton = Instance.new("TextButton", frame)
-    aimButton.Size = UDim2.new(1, 0, 0.2, 0)
+    aimButton.Size = UDim2.new(1, 0, 0.15, 0)
     aimButton.Position = UDim2.new(0, 0, 0.25, 0)
     aimButton.Text = "Aimbot: " .. (aimAssistEnabled and "Ligado" or "Desligado")
     aimButton.TextColor3 = Color3.new(1, 1, 1)
@@ -146,8 +169,8 @@ function drawMenu()
 
     -- Adicionar botão para ESP
     local espButton = Instance.new("TextButton", frame)
-    espButton.Size = UDim2.new(1, 0, 0.2, 0)
-    espButton.Position = UDim2.new(0, 0, 0.5, 0)
+    espButton.Size = UDim2.new(1, 0, 0.15, 0)
+    espButton.Position = UDim2.new(0, 0, 0.4, 0)
     espButton.Text = "ESP: " .. (espEnabled and "Ligado" or "Desligado")
     espButton.TextColor3 = Color3.new(1, 1, 1)
     espButton.TextScaled = true
@@ -158,10 +181,24 @@ function drawMenu()
         espButton.Text = "ESP: " .. (espEnabled and "Ligado" or "Desligado")
     end)
 
+    -- Adicionar botão para Noclip
+    local noclipButton = Instance.new("TextButton", frame)
+    noclipButton.Size = UDim2.new(1, 0, 0.15, 0)
+    noclipButton.Position = UDim2.new(0, 0, 0.55, 0)
+    noclipButton.Text = "Noclip: " .. (noclipEnabled and "Ligado" or "Desligado")
+    noclipButton.TextColor3 = Color3.new(1, 1, 1)
+    noclipButton.TextScaled = true
+    noclipButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+
+    noclipButton.MouseButton1Click:Connect(function()
+        toggleNoclip()
+        noclipButton.Text = "Noclip: " .. (noclipEnabled and "Ligado" or "Desligado")
+    end)
+
     -- Botão para fechar o menu
     local closeButton = Instance.new("TextButton", frame)
-    closeButton.Size = UDim2.new(1, 0, 0.2, 0)
-    closeButton.Position = UDim2.new(0, 0, 0.75, 0)
+    closeButton.Size = UDim2.new(1, 0, 0.15, 0)
+    closeButton.Position = UDim2.new(0, 0, 0.7, 0)
     closeButton.Text = "Fechar Menu"
     closeButton.TextColor3 = Color3.new(1, 1, 1)
     closeButton.TextScaled = true
@@ -173,14 +210,14 @@ function drawMenu()
         gui:Destroy()
     end)
 
-    -- Função para arrastar o menu ao segurar o botão direito do mouse
+    -- Função para arrastar o menu ao segurar o botão esquerdo do mouse
     local function updateInput(input)
         local delta = input.Position - dragStart
         frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 
     frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Botão direito
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then -- Botão esquerdo
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
