@@ -9,6 +9,9 @@ local espEnabled = false
 local menuVisible = false
 local aimDistance = 100 -- Distância padrão
 
+local dragging = false
+local dragInput, dragStart, startPos
+
 local highlight = Instance.new("Highlight")
 highlight.Name = "Highlight"
 
@@ -109,11 +112,12 @@ function drawMenu()
     gui.Name = "AimAssistMenu"
     
     local frame = Instance.new("Frame", gui)
-    frame.Size = UDim2.new(0.4, 0, 0.4, 0)
-    frame.Position = UDim2.new(0.3, 0, 0.3, 0)
+    frame.Size = UDim2.new(0.8, 0, 0.8, 0) -- Aumentei o tamanho em 2 vezes
+    frame.Position = UDim2.new(0.1, 0, 0.1, 0)
     frame.BackgroundColor3 = Color3.new(0, 0, 0)
     frame.BackgroundTransparency = 0.7
-    frame.BorderSizePixel = 0
+    frame.BorderSizePixel = 2 -- Adicionar borda
+    frame.BorderColor3 = Color3.new(1, 1, 1) -- Cor da borda
     frame.ClipsDescendants = true
     
     local corner = Instance.new("UICorner", frame)
@@ -167,5 +171,37 @@ function drawMenu()
     closeButton.MouseButton1Click:Connect(function()
         menuVisible = false
         gui:Destroy()
+    end)
+
+    -- Função para arrastar o menu ao segurar o botão direito do mouse
+    local function updateInput(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Botão direito
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            updateInput(input)
+        end
     end)
 end
