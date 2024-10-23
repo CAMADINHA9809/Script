@@ -49,7 +49,7 @@ function updateAim()
     end
 end
 
--- Ativar ESP (destacar jogadores)
+-- Função para ativar ESP (destacar jogadores)
 function enableESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -63,7 +63,7 @@ function enableESP()
     end
 end
 
--- Desativar ESP
+-- Função para desativar ESP
 function disableESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -75,7 +75,7 @@ function disableESP()
     end
 end
 
--- Alternar ESP
+-- Função para alternar ESP
 function toggleESP()
     espEnabled = not espEnabled
     if espEnabled then
@@ -114,8 +114,6 @@ RunService.RenderStepped:Connect(updateAim)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed then
         if input.KeyCode == Enum.KeyCode.F1 then
-            aimAssistEnabled = not aimAssistEnabled
-        elseif input.KeyCode == Enum.KeyCode.O then
             menuVisible = not menuVisible
             
             if menuVisible then
@@ -125,6 +123,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     game.Players.LocalPlayer.PlayerGui.AimAssistMenu:Destroy()
                 end
             end
+        elseif input.KeyCode == Enum.KeyCode.O then
+            aimAssistEnabled = not aimAssistEnabled
         end
     end
 end)
@@ -242,3 +242,34 @@ function drawMenu()
         end
     end)
 end
+
+-- Inicializar o Highlight para jogadores
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local highlightClone = highlight:Clone()
+        highlightClone.Adornee = player.Character
+        highlightClone.Parent = player.Character.HumanoidRootPart
+        highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    end
+end
+
+-- Adicionar Highlight para jogadores novos
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Wait()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local highlightClone = highlight:Clone()
+        highlightClone.Adornee = player.Character
+        highlightClone.Parent = player.Character.HumanoidRootPart
+        highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    end
+end)
+
+-- Remover Highlight quando jogadores saem
+Players.PlayerRemoving:Connect(function(playerRemoved)
+    if playerRemoved.Character and playerRemoved.Character:FindFirstChild("HumanoidRootPart") then
+        local highlightInstance = playerRemoved.Character.HumanoidRootPart:FindFirstChild("Highlight")
+        if highlightInstance then
+            highlightInstance:Destroy()
+        end
+    end
+end)
