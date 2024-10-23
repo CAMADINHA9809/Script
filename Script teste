@@ -5,19 +5,13 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local aimAssistEnabled = false
-local espEnabled = false
-local menuVisible = false
 local noclipEnabled = false
-local aimDistance = 100 -- Distância padrão
+local menuVisible = false
+local aimDistance = 100
+local dragging, dragStart, startPos = false, nil, nil
 
-local dragging = false
-local dragInput, dragStart, startPos
-
-local highlight = Instance.new("Highlight")
-highlight.Name = "Highlight"
-
--- Função para obter o inimigo mais próximo
-function getClosestEnemy()
+-- Função para obter o jogador mais próximo
+local function getClosestEnemy()
     local closestEnemy = nil
     local shortestDistance = aimDistance
 
@@ -36,188 +30,58 @@ function getClosestEnemy()
     return closestEnemy
 end
 
--- Função de atualização de mira assistida
-function updateAim()
+-- Função de atualização da mira
+local function updateAim()
     if aimAssistEnabled then
         local closestEnemy = getClosestEnemy()
         
         if closestEnemy and closestEnemy.Character and closestEnemy.Character:FindFirstChild("Head") then
             local targetHead = closestEnemy.Character.Head
+            -- Adiciona um leve "lerp" na movimentação da câmera
             local aimPosition = targetHead.Position
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, aimPosition), 0.1)
         end
     end
 end
 
--- Função para ativar ESP (destacar jogadores)
-function enableESP()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            if not player.Character.HumanoidRootPart:FindFirstChild("Highlight") then
-                local highlightClone = highlight:Clone()
-                highlightClone.Adornee = player.Character
-                highlightClone.Parent = player.Character.HumanoidRootPart
-                highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-            end
-        end
-    end
-end
-
--- Função para desativar ESP
-function disableESP()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local highlightInstance = player.Character.HumanoidRootPart:FindFirstChild("Highlight")
-            if highlightInstance then
-                highlightInstance:Destroy()
-            end
-        end
-    end
-end
-
--- Função para alternar ESP
-function toggleESP()
-    espEnabled = not espEnabled
-    if espEnabled then
-        enableESP()
-    else
-        disableESP()
-    end
-end
-
--- Função para alternar Noclip
-function toggleNoclip()
+-- Função para ativar/desativar noclip
+local function toggleNoclip()
     noclipEnabled = not noclipEnabled
-    if noclipEnabled then
-        RunService.Stepped:Connect(function()
-            if noclipEnabled and LocalPlayer.Character then
-                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end)
-    else
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+    local character = LocalPlayer.Character
+
+    if character then
+        for _, part in pairs(character:GetChildren()) do
             if part:IsA("BasePart") then
-                part.CanCollide = true
+                part.CanCollide = not noclipEnabled
             end
         end
     end
 end
 
--- Conectar a função de atualização da mira no RenderStepped
-RunService.RenderStepped:Connect(updateAim)
-
--- Mostrar e ocultar o menu com F1
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed then
-        if input.KeyCode == Enum.KeyCode.F1 then
-            menuVisible = not menuVisible
-            
-            if menuVisible then
-                drawMenu()
-            else
-                if game.Players.LocalPlayer.PlayerGui:FindFirstChild("AimAssistMenu") then
-                    game.Players.LocalPlayer.PlayerGui.AimAssistMenu:Destroy()
-                end
-            end
-        elseif input.KeyCode == Enum.KeyCode.O then
-            aimAssistEnabled = not aimAssistEnabled
-        end
+-- Ativa a lógica de noclip
+RunService.RenderStepped:Connect(function()
+    if noclipEnabled then
+        toggleNoclip()
     end
+    updateAim()
 end)
 
 -- Função para desenhar o menu
-function drawMenu()
+local function drawMenu()
     local gui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
     gui.Name = "AimAssistMenu"
     
     local frame = Instance.new("Frame", gui)
-    frame.Size = UDim2.new(0.8, 0, 0.8, 0) -- Aumentei o tamanho em 2 vezes
-    frame.Position = UDim2.new(0.1, 0, 0.1, 0)
+    frame.Size = UDim2.new(0.5, 0, 0.4, 0) -- Tamanho reduzido do menu
+    frame.Position = UDim2.new(0.25, 0, 0.3, 0)
     frame.BackgroundColor3 = Color3.new(0, 0, 0)
     frame.BackgroundTransparency = 0.7
-    frame.BorderSizePixel = 2 -- Adicionar borda
-    frame.BorderColor3 = Color3.new(1, 1, 1) -- Cor da borda
+    frame.BorderSizePixel = 0
     frame.ClipsDescendants = true
     
-    local corner = Instance.new("UICorner", frame)
-    corner.CornerRadius = UDim.new(0, 12)
-
-    local titleLabel = Instance.new("TextLabel", frame)
-    titleLabel.Size = UDim2.new(1, 0, 0.2, 0)
-    titleLabel.Text = "Assistente de Mira"
-    titleLabel.TextColor3 = Color3.new(1, 1, 1)
-    titleLabel.TextScaled = true
-    titleLabel.BackgroundTransparency = 1
-
-    -- Adicionar botão para Aimbot
-    local aimButton = Instance.new("TextButton", frame)
-    aimButton.Size = UDim2.new(1, 0, 0.15, 0)
-    aimButton.Position = UDim2.new(0, 0, 0.25, 0)
-    aimButton.Text = "Aimbot: " .. (aimAssistEnabled and "Ligado" or "Desligado")
-    aimButton.TextColor3 = Color3.new(1, 1, 1)
-    aimButton.TextScaled = true
-    aimButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-
-    aimButton.MouseButton1Click:Connect(function()
-        aimAssistEnabled = not aimAssistEnabled
-        aimButton.Text = "Aimbot: " .. (aimAssistEnabled and "Ligado" or "Desligado")
-    end)
-
-    -- Adicionar botão para ESP
-    local espButton = Instance.new("TextButton", frame)
-    espButton.Size = UDim2.new(1, 0, 0.15, 0)
-    espButton.Position = UDim2.new(0, 0, 0.4, 0)
-    espButton.Text = "ESP: " .. (espEnabled and "Ligado" or "Desligado")
-    espButton.TextColor3 = Color3.new(1, 1, 1)
-    espButton.TextScaled = true
-    espButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-
-    espButton.MouseButton1Click:Connect(function()
-        toggleESP()
-        espButton.Text = "ESP: " .. (espEnabled and "Ligado" or "Desligado")
-    end)
-
-    -- Adicionar botão para Noclip
-    local noclipButton = Instance.new("TextButton", frame)
-    noclipButton.Size = UDim2.new(1, 0, 0.15, 0)
-    noclipButton.Position = UDim2.new(0, 0, 0.55, 0)
-    noclipButton.Text = "Noclip: " .. (noclipEnabled and "Ligado" or "Desligado")
-    noclipButton.TextColor3 = Color3.new(1, 1, 1)
-    noclipButton.TextScaled = true
-    noclipButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-
-    noclipButton.MouseButton1Click:Connect(function()
-        toggleNoclip()
-        noclipButton.Text = "Noclip: " .. (noclipEnabled and "Ligado" or "Desligado")
-    end)
-
-    -- Botão para fechar o menu
-    local closeButton = Instance.new("TextButton", frame)
-    closeButton.Size = UDim2.new(1, 0, 0.15, 0)
-    closeButton.Position = UDim2.new(0, 0, 0.7, 0)
-    closeButton.Text = "Fechar Menu"
-    closeButton.TextColor3 = Color3.new(1, 1, 1)
-    closeButton.TextScaled = true
-    closeButton.BackgroundColor3 = Color3.new(1, 0, 0)
-    closeButton.BorderSizePixel = 0
-
-    closeButton.MouseButton1Click:Connect(function()
-        menuVisible = false
-        gui:Destroy()
-    end)
-
-    -- Função para arrastar o menu ao segurar o botão esquerdo do mouse
-    local function updateInput(input)
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-
+    -- Lógica de arrastar o menu
     frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then -- Botão esquerdo
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
@@ -232,24 +96,85 @@ function drawMenu()
 
     frame.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
+            if dragging then
+                local delta = input.Position - dragStart
+                frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            updateInput(input)
-        end
+    -- Adiciona título e botões
+    local titleLabel = Instance.new("TextLabel", frame)
+    titleLabel.Size = UDim2.new(1, 0, 0.2, 0)
+    titleLabel.Text = "Assistente de Mira"
+    titleLabel.TextColor3 = Color3.new(1, 1, 1)
+    titleLabel.TextScaled = true
+    titleLabel.BackgroundTransparency = 1
+
+    local noclipButton = Instance.new("TextButton", frame)
+    noclipButton.Size = UDim2.new(1, 0, 0.15, 0)
+    noclipButton.Position = UDim2.new(0, 0, 0.2, 0)
+    noclipButton.Text = "Noclip: " .. (noclipEnabled and "Ligado" or "Desligado")
+    noclipButton.TextColor3 = Color3.new(1, 1, 1)
+    noclipButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+
+    noclipButton.MouseButton1Click:Connect(function()
+        toggleNoclip()
+        noclipButton.Text = "Noclip: " .. (noclipEnabled and "Ligado" or "Desligado")
+    end)
+
+    local closeButton = Instance.new("TextButton", frame)
+    closeButton.Size = UDim2.new(1, 0, 0.15, 0)
+    closeButton.Position = UDim2.new(0, 0, 0.4, 0)
+    closeButton.Text = "Fechar Menu"
+    closeButton.TextColor3 = Color3.new(1, 1, 1)
+    closeButton.BackgroundColor3 = Color3.new(1, 0, 0)
+
+    closeButton.MouseButton1Click:Connect(function()
+        menuVisible = false
+        gui:Destroy()
     end)
 end
 
+-- Controles do jogador
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.F1 then
+            menuVisible = not menuVisible
+            if menuVisible then
+                drawMenu()
+            else
+                if LocalPlayer.PlayerGui:FindFirstChild("AimAssistMenu") then
+                    LocalPlayer.PlayerGui.AimAssistMenu:Destroy()
+                end
+            end
+        elseif input.KeyCode == Enum.KeyCode.O then
+            aimAssistEnabled = not aimAssistEnabled
+        end
+    end
+end)
+
 -- Inicializar o Highlight para jogadores
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local highlightClone = highlight:Clone()
-        highlightClone.Adornee = player.Character
-        highlightClone.Parent = player.Character.HumanoidRootPart
-        highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+local function enableESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local highlight = Instance.new("Highlight", player.Character)
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            
+            -- Criar label de distância
+            local distanceLabel = Instance.new("TextLabel", player.Character.Head)
+            distanceLabel.Size = UDim2.new(0, 100, 0, 50)
+            distanceLabel.TextColor3 = Color3.new(1, 1, 1)
+            distanceLabel.BackgroundTransparency = 1
+            
+            -- Atualizar distância
+            RunService.RenderStepped:Connect(function()
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude
+                    distanceLabel.Text = string.format("Distância: %.1f STUDS", distance)
+                end
+            end)
+        end
     end
 end
 
@@ -257,19 +182,24 @@ end
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Wait()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local highlightClone = highlight:Clone()
-        highlightClone.Adornee = player.Character
-        highlightClone.Parent = player.Character.HumanoidRootPart
-        highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        enableESP()
     end
 end)
 
 -- Remover Highlight quando jogadores saem
 Players.PlayerRemoving:Connect(function(playerRemoved)
     if playerRemoved.Character and playerRemoved.Character:FindFirstChild("HumanoidRootPart") then
-        local highlightInstance = playerRemoved.Character.HumanoidRootPart:FindFirstChild("Highlight")
+        local highlightInstance = playerRemoved.Character:FindFirstChild("Highlight")
         if highlightInstance then
             highlightInstance:Destroy()
         end
+        
+        local distanceLabel = playerRemoved.Character.Head:FindFirstChild("TextLabel")
+        if distanceLabel then
+            distanceLabel:Destroy()
+        end
     end
 end)
+
+-- Inicializa o ESP para jogadores já presentes
+enableESP()
