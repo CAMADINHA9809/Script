@@ -1,0 +1,171 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local aimAssistEnabled = false
+local espEnabled = false
+local menuVisible = false
+local aimDistance = 100 -- Distância padrão
+
+local highlight = Instance.new("Highlight")
+highlight.Name = "Highlight"
+
+-- Função para obter o inimigo mais próximo
+function getClosestEnemy()
+    local closestEnemy = nil
+    local shortestDistance = aimDistance
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Team ~= LocalPlayer.Team then
+            local enemyHead = player.Character.Head
+            local distance = (Camera.CFrame.Position - enemyHead.Position).magnitude
+            
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestEnemy = player
+            end
+        end
+    end
+    
+    return closestEnemy
+end
+
+-- Função de atualização de mira assistida
+function updateAim()
+    if aimAssistEnabled then
+        local closestEnemy = getClosestEnemy()
+        
+        if closestEnemy and closestEnemy.Character and closestEnemy.Character:FindFirstChild("Head") then
+            local targetHead = closestEnemy.Character.Head
+            local aimPosition = targetHead.Position
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
+        end
+    end
+end
+
+-- Ativar ESP (destacar jogadores)
+function enableESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if not player.Character.HumanoidRootPart:FindFirstChild("Highlight") then
+                local highlightClone = highlight:Clone()
+                highlightClone.Adornee = player.Character
+                highlightClone.Parent = player.Character.HumanoidRootPart
+                highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            end
+        end
+    end
+end
+
+-- Desativar ESP
+function disableESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local highlightInstance = player.Character.HumanoidRootPart:FindFirstChild("Highlight")
+            if highlightInstance then
+                highlightInstance:Destroy()
+            end
+        end
+    end
+end
+
+-- Alternar ESP
+function toggleESP()
+    espEnabled = not espEnabled
+    if espEnabled then
+        enableESP()
+    else
+        disableESP()
+    end
+end
+
+-- Conectar a função de atualização da mira no RenderStepped
+RunService.RenderStepped:Connect(updateAim)
+
+-- Mostrar e ocultar o menu com F1
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.F1 then
+            aimAssistEnabled = not aimAssistEnabled
+        elseif input.KeyCode == Enum.KeyCode.O then
+            menuVisible = not menuVisible
+            
+            if menuVisible then
+                drawMenu()
+            else
+                if game.Players.LocalPlayer.PlayerGui:FindFirstChild("AimAssistMenu") then
+                    game.Players.LocalPlayer.PlayerGui.AimAssistMenu:Destroy()
+                end
+            end
+        end
+    end
+end)
+
+-- Função para desenhar o menu
+function drawMenu()
+    local gui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+    gui.Name = "AimAssistMenu"
+    
+    local frame = Instance.new("Frame", gui)
+    frame.Size = UDim2.new(0.4, 0, 0.4, 0)
+    frame.Position = UDim2.new(0.3, 0, 0.3, 0)
+    frame.BackgroundColor3 = Color3.new(0, 0, 0)
+    frame.BackgroundTransparency = 0.7
+    frame.BorderSizePixel = 0
+    frame.ClipsDescendants = true
+    
+    local corner = Instance.new("UICorner", frame)
+    corner.CornerRadius = UDim.new(0, 12)
+
+    local titleLabel = Instance.new("TextLabel", frame)
+    titleLabel.Size = UDim2.new(1, 0, 0.2, 0)
+    titleLabel.Text = "Assistente de Mira"
+    titleLabel.TextColor3 = Color3.new(1, 1, 1)
+    titleLabel.TextScaled = true
+    titleLabel.BackgroundTransparency = 1
+
+    -- Adicionar botão para Aimbot
+    local aimButton = Instance.new("TextButton", frame)
+    aimButton.Size = UDim2.new(1, 0, 0.2, 0)
+    aimButton.Position = UDim2.new(0, 0, 0.25, 0)
+    aimButton.Text = "Aimbot: " .. (aimAssistEnabled and "Ligado" or "Desligado")
+    aimButton.TextColor3 = Color3.new(1, 1, 1)
+    aimButton.TextScaled = true
+    aimButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+
+    aimButton.MouseButton1Click:Connect(function()
+        aimAssistEnabled = not aimAssistEnabled
+        aimButton.Text = "Aimbot: " .. (aimAssistEnabled and "Ligado" or "Desligado")
+    end)
+
+    -- Adicionar botão para ESP
+    local espButton = Instance.new("TextButton", frame)
+    espButton.Size = UDim2.new(1, 0, 0.2, 0)
+    espButton.Position = UDim2.new(0, 0, 0.5, 0)
+    espButton.Text = "ESP: " .. (espEnabled and "Ligado" or "Desligado")
+    espButton.TextColor3 = Color3.new(1, 1, 1)
+    espButton.TextScaled = true
+    espButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+
+    espButton.MouseButton1Click:Connect(function()
+        toggleESP()
+        espButton.Text = "ESP: " .. (espEnabled and "Ligado" or "Desligado")
+    end)
+
+    -- Botão para fechar o menu
+    local closeButton = Instance.new("TextButton", frame)
+    closeButton.Size = UDim2.new(1, 0, 0.2, 0)
+    closeButton.Position = UDim2.new(0, 0, 0.75, 0)
+    closeButton.Text = "Fechar Menu"
+    closeButton.TextColor3 = Color3.new(1, 1, 1)
+    closeButton.TextScaled = true
+    closeButton.BackgroundColor3 = Color3.new(1, 0, 0)
+    closeButton.BorderSizePixel = 0
+
+    closeButton.MouseButton1Click:Connect(function()
+        menuVisible = false
+        gui:Destroy()
+    end)
+end
